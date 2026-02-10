@@ -1,9 +1,5 @@
-<<<<<<< HEAD
-import { pgEnum, integer, pgTable, varchar } from "drizzle-orm/pg-core";
-=======
 import { pgEnum, integer, pgTable, varchar, timestamp, real, jsonb, unique } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
->>>>>>> df9041c (LMS backend)
 
 export const rolesEnum = pgEnum("role", [
   "admin",
@@ -12,8 +8,6 @@ export const rolesEnum = pgEnum("role", [
   "schoolkid",
 ]);
 
-<<<<<<< HEAD
-=======
 export const courseStatusEnum = pgEnum("course_status", ["draft", "publish", "archived"]);
 
 /** Тип задания: Введение, Теория, Видео, Практика, Тест */
@@ -25,17 +19,12 @@ export const assignmentTypeEnum = pgEnum("assignment_type", [
   "test",
 ]);
 
-
->>>>>>> df9041c (LMS backend)
 export const usersTable = pgTable("users", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
   fullname: varchar({ length: 255 }).notNull(),
   email: varchar({ length: 255 }).notNull().unique(),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
   role: rolesEnum().default("student").notNull(),
-<<<<<<< HEAD
-});
-=======
   avatarUrl: varchar("avatar_url", { length: 500 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -199,4 +188,3 @@ export const reviewsRelations = relations(reviewsTable, ({ one }) => ({
   user: one(usersTable),
   course: one(coursesTable),
 }));
->>>>>>> df9041c (LMS backend)

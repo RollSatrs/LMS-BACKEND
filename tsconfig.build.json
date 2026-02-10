@@ -1,12 +1,9 @@
 {
   "extends": "./tsconfig.json",
-<<<<<<< HEAD
-=======
   "compilerOptions": {
     "module": "commonjs",
     "moduleResolution": "node",
     "resolvePackageJsonExports": false
   },
->>>>>>> df9041c (LMS backend)
   "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
 }

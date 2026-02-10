@@ -9,12 +9,9 @@ export class AppController {
   getHello(): string {
     return this.appService.getHello();
   }
-<<<<<<< HEAD
-=======
 
   @Get('health')
   health() {
     return { ok: true, message: 'Backend works', port: process.env.PORT ?? 3001 };
   }
->>>>>>> df9041c (LMS backend)
 }

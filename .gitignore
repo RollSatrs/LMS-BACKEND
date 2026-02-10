@@ -1,12 +1,9 @@
 # compiled output
 /dist
 /node_modules
-<<<<<<< HEAD
-=======
 # не коммитить скомпилированные .js в src (исходники только .ts, сборка — в dist)
 /src/**/*.js
 /src/**/*.js.map
->>>>>>> df9041c (LMS backend)
 /build
 
 # Logs
@@ -48,12 +45,9 @@ lerna-debug.log*
 .env.production.local
 .env.local
 
-<<<<<<< HEAD
-=======
 # Загруженные файлы (аватарки, обложки, видео) — не хранить в репо
 /uploads
 
->>>>>>> df9041c (LMS backend)
 # temp directory
 .temp
 .tmp

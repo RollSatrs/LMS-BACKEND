@@ -1,13 +1,3 @@
-<<<<<<< HEAD
-import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
-import { JwtService } from '@nestjs/jwt';
-import { LoginDto } from './dto/login.dto';
-import type { Request, Response } from 'express';
-import { JwtAuthGuard } from './jwt.guard';
-
-=======
 import {
   BadRequestException,
   Body,
@@ -36,16 +26,11 @@ import { JwtAuthGuard } from './jwt.guard';
 const AVATARS_UPLOAD_DIR = join(process.cwd(), 'uploads', 'avatars');
 if (!existsSync(AVATARS_UPLOAD_DIR)) mkdirSync(AVATARS_UPLOAD_DIR, { recursive: true });
 
->>>>>>> df9041c (LMS backend)
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post("register")
-<<<<<<< HEAD
-  async register(@Body() params: RegisterDto) {
-    return await this.authService.register(params)
-=======
   async register(
     @Body() params: RegisterDto,
     @Res({ passthrough: true }) res: Response,
@@ -58,7 +43,6 @@ export class AuthController {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     return { message, user };
->>>>>>> df9041c (LMS backend)
   }
 
   @Post("login")
@@ -82,10 +66,6 @@ export class AuthController {
 
   @Get("me")
   @UseGuards(JwtAuthGuard)
-<<<<<<< HEAD
-  me(@Req() req:Request){
-    return req.user
-=======
   async me(@Req() req: Request) {
     return await this.authService.getMe(req.user.id);
   }
@@ -128,6 +108,5 @@ export class AuthController {
   logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie("access_token");
     return { message: "Вы успешно вышли" };
->>>>>>> df9041c (LMS backend)
   }
 }

@@ -4,11 +4,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { AiModule } from './ai/ai.module';
-<<<<<<< HEAD
-
-@Module({
-  imports: [AuthModule, AiModule,ConfigModule.forRoot({
-=======
 import { CategoryModule } from './category/category.module';
 import { CourseModule } from './course/course.module';
 import { EnrollmentModule } from './enrollment/enrollment.module';
@@ -20,7 +15,6 @@ import { ContentModule } from './content/content.module';
 
 @Module({
   imports: [AuthModule, AiModule, CategoryModule, CourseModule, EnrollmentModule, FavoriteModule, ReviewModule, LessonModule, AnalyticsModule, ContentModule, ConfigModule.forRoot({
->>>>>>> df9041c (LMS backend)
       isGlobal: true
     })
   ],
