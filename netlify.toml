@@ -1,12 +1,11 @@
 [build]
-  # Корень сборки — папка backend (если деплой из корня репо, укажи base = "backend" в настройках Netlify)
-  publish = "dist"
   functions = "netlify/functions"
-  command = ""
 
 [functions]
   node_bundler = "esbuild"
   directory = "netlify/functions"
 
-# Переменные окружения задаются в Netlify Dashboard (Environment variables)
-# Локально используй файл .env (не коммить!)
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
