@@ -57,6 +57,33 @@
 
 Без `.env.development.local` фронт в dev по умолчанию использует proxy на 3001 (режим «backend start:dev + frontend start»).
 
+### Миграции базы данных (Drizzle)
+
+**Для Railway (рекомендуется):**
+Миграции запускаются автоматически при деплое, если в настройках Railway используется команда `start:prod:with-migrate` вместо `start:prod`.
+
+**Для локального запуска миграций:**
+Если нужно запустить миграции локально против Railway Postgres:
+
+1. Получите **публичный URL** из Railway:
+   - Откройте проект в Railway
+   - Перейдите в Postgres сервис → вкладка **"Variables"** или **"Connect"**
+   - Найдите `DATABASE_URL` с публичным хостом (не `postgres.railway.internal`, а что-то вроде `containers-us-west-xxx.railway.app`)
+
+2. Запустите миграции с публичным URL:
+   ```bash
+   # Windows PowerShell
+   $env:DATABASE_URL="postgresql://postgres:password@containers-us-west-xxx.railway.app:5432/railway"; pnpm run db:migrate
+   
+   # Windows CMD
+   set DATABASE_URL=postgresql://postgres:password@containers-us-west-xxx.railway.app:5432/railway && pnpm run db:migrate
+   
+   # Linux/Mac
+   DATABASE_URL="postgresql://postgres:password@containers-us-west-xxx.railway.app:5432/railway" pnpm run db:migrate
+   ```
+
+**Примечание:** Внутренний URL (`postgres.railway.internal`) работает только внутри сети Railway и недоступен с локальной машины.
+
 ---
 
 ## Description
