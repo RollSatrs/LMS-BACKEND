@@ -3,14 +3,20 @@ import OpenAI from 'openai';
 
 @Injectable()
 export class AiService {
-    private openai: OpenAI
-    constructor(){
-        this.openai = new OpenAI({
-            apiKey: process.env.OPENAI_API
-        })
+    private openai: OpenAI | null = null;
+
+    constructor() {
+        const apiKey = process.env.OPENAI_API;
+        if (apiKey) {
+            this.openai = new OpenAI({ apiKey });
+        }
     }
-    async chat(message: string): Promise<string>{
-        try{
+
+    async chat(message: string): Promise<string> {
+        if (!this.openai) {
+            return 'AI не настроен: задайте OPENAI_API в переменных окружения.';
+        }
+        try {
             const response = await this.openai.chat.completions.create({
                 model: "chatgpt-4o-latest",
                 messages: [
