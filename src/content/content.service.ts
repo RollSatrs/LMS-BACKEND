@@ -13,6 +13,8 @@ import {
   underModulesTable,
   modulesContentTable,
   underModuleCompletionsTable,
+  testQuestionsTable,
+  testAnswersTable,
 } from '../db/schema';
 import { CreateModuleDto } from './dto/create-module.dto';
 import { UpdateModuleDto } from './dto/update-module.dto';
@@ -20,6 +22,10 @@ import { CreateUnderModuleDto } from './dto/create-under-module.dto';
 import { UpdateUnderModuleDto } from './dto/update-under-module.dto';
 import { CreateModulesContentDto } from './dto/create-modules-content.dto';
 import { UpdateModulesContentDto } from './dto/update-modules-content.dto';
+import { CreateTestQuestionDto } from './dto/create-test-question.dto';
+import { UpdateTestQuestionDto } from './dto/update-test-question.dto';
+import { CreateTestAnswerDto } from './dto/create-test-answer.dto';
+import { UpdateTestAnswerDto } from './dto/update-test-answer.dto';
 
 @Injectable()
 export class ContentService {
@@ -372,6 +378,281 @@ export class ContentService {
     await this.ensureAuthorByContent(userId, id);
     await db.delete(modulesContentTable).where(eq(modulesContentTable.id, id));
     return { message: 'Контент удалён' };
+  }
+
+  private async ensureAuthorByQuestion(userId: number, questionId: number) {
+    const [q] = await db
+      .select()
+      .from(testQuestionsTable)
+      .where(eq(testQuestionsTable.id, questionId))
+      .limit(1);
+    if (!q) throw new NotFoundException('Вопрос не найден');
+    await this.ensureAuthorByUnderModule(userId, q.underModuleId);
+    return q;
+  }
+
+  private async isAuthorOfUnderModule(userId: number, underModuleId: number): Promise<boolean> {
+    const [um] = await db
+      .select()
+      .from(underModulesTable)
+      .where(eq(underModulesTable.id, underModuleId))
+      .limit(1);
+    if (!um) return false;
+    const [mod] = await db
+      .select()
+      .from(modulesTable)
+      .where(eq(modulesTable.id, um.moduleId))
+      .limit(1);
+    if (!mod) return false;
+    const [lesson] = await db
+      .select()
+      .from(lessonsTable)
+      .where(eq(lessonsTable.id, mod.lessonId))
+      .limit(1);
+    if (!lesson) return false;
+    const [course] = await db
+      .select()
+      .from(coursesTable)
+      .where(eq(coursesTable.id, lesson.courseId))
+      .limit(1);
+    return !!(course && course.userId === userId);
+  }
+
+  private async updateTestUnderModuleMaxScore(underModuleId: number) {
+    const questions = await db
+      .select({ id: testQuestionsTable.id })
+      .from(testQuestionsTable)
+      .where(eq(testQuestionsTable.underModuleId, underModuleId));
+    await db
+      .update(underModulesTable)
+      .set({ maxScore: questions.length })
+      .where(eq(underModulesTable.id, underModuleId));
+  }
+
+  /** Вопросы теста (преподаватель): с флагом isCorrect у ответов */
+  async getTestQuestions(userId: number, underModuleId: number) {
+    await this.ensureAuthorByUnderModule(userId, underModuleId);
+    const questions = await db
+      .select()
+      .from(testQuestionsTable)
+      .where(eq(testQuestionsTable.underModuleId, underModuleId))
+      .orderBy(asc(testQuestionsTable.order), asc(testQuestionsTable.id));
+    const questionIds = questions.map((q) => q.id);
+    if (questionIds.length === 0) return { questions: [] };
+    const answers = await db
+      .select()
+      .from(testAnswersTable)
+      .where(inArray(testAnswersTable.questionId, questionIds))
+      .orderBy(asc(testAnswersTable.order), asc(testAnswersTable.id));
+    const answersByQ = new Map<number, typeof answers>();
+    for (const a of answers) {
+      const list = answersByQ.get(a.questionId) ?? [];
+      list.push(a);
+      answersByQ.set(a.questionId, list);
+    }
+    const questionsWithAnswers = questions.map((q) => {
+      const list = answersByQ.get(q.id) ?? [];
+      return {
+        id: q.id,
+        text: q.text,
+        order: q.order,
+        answers: list.map((a) => ({
+          id: a.id,
+          text: a.text,
+          isCorrect: !!a.isCorrect,
+          order: a.order,
+        })),
+      };
+    });
+    return { questions: questionsWithAnswers };
+  }
+
+  /** Для студента: вопросы и варианты без isCorrect */
+  async getTestQuestionsForStudent(underModuleId: number) {
+    const questions = await db
+      .select()
+      .from(testQuestionsTable)
+      .where(eq(testQuestionsTable.underModuleId, underModuleId))
+      .orderBy(asc(testQuestionsTable.order), asc(testQuestionsTable.id));
+    const questionIds = questions.map((q) => q.id);
+    if (questionIds.length === 0) return { questions: [] };
+    const answers = await db
+      .select({ id: testAnswersTable.id, questionId: testAnswersTable.questionId, text: testAnswersTable.text, order: testAnswersTable.order })
+      .from(testAnswersTable)
+      .where(inArray(testAnswersTable.questionId, questionIds))
+      .orderBy(asc(testAnswersTable.order), asc(testAnswersTable.id));
+    const answersByQ = new Map<number, { id: number; text: string; order: number }[]>();
+    for (const a of answers) {
+      const list = answersByQ.get(a.questionId) ?? [];
+      list.push({ id: a.id, text: a.text, order: a.order });
+      answersByQ.set(a.questionId, list);
+    }
+    return {
+      questions: questions.map((q) => ({
+        id: q.id,
+        text: q.text,
+        order: q.order,
+        answers: answersByQ.get(q.id) ?? [],
+      })),
+    };
+  }
+
+  /** Один endpoint: автор получает с isCorrect, студент — без (при canAccess) */
+  async getTestQuestionsForUser(userId: number, underModuleId: number) {
+    const author = await this.isAuthorOfUnderModule(userId, underModuleId);
+    if (author) return this.getTestQuestions(userId, underModuleId);
+    const can = await this.canAccess(userId, underModuleId);
+    if (!can) throw new ForbiddenException('Нет доступа к этому шагу');
+    return this.getTestQuestionsForStudent(underModuleId);
+  }
+
+  async createTestQuestion(userId: number, underModuleId: number, dto: CreateTestQuestionDto) {
+    await this.ensureAuthorByUnderModule(userId, underModuleId);
+    const [row] = await db
+      .insert(testQuestionsTable)
+      .values({
+        underModuleId,
+        text: dto.text,
+        order: dto.order ?? 0,
+      })
+      .returning();
+    if (!row) throw new NotFoundException('Не удалось создать вопрос');
+    await this.updateTestUnderModuleMaxScore(underModuleId);
+    return row;
+  }
+
+  async updateTestQuestion(userId: number, id: number, dto: UpdateTestQuestionDto) {
+    await this.ensureAuthorByQuestion(userId, id);
+    const updates: { text?: string; order?: number } = {};
+    if (dto.text !== undefined) updates.text = dto.text;
+    if (dto.order !== undefined) updates.order = dto.order;
+    if (Object.keys(updates).length === 0) {
+      const [q] = await db.select().from(testQuestionsTable).where(eq(testQuestionsTable.id, id)).limit(1);
+      return q!;
+    }
+    const [row] = await db
+      .update(testQuestionsTable)
+      .set(updates)
+      .where(eq(testQuestionsTable.id, id))
+      .returning();
+    return row!;
+  }
+
+  async deleteTestQuestion(userId: number, id: number) {
+    const q = await this.ensureAuthorByQuestion(userId, id);
+    await db.delete(testQuestionsTable).where(eq(testQuestionsTable.id, id));
+    await this.updateTestUnderModuleMaxScore(q.underModuleId);
+    return { message: 'Вопрос удалён' };
+  }
+
+  async createTestAnswer(userId: number, questionId: number, dto: CreateTestAnswerDto) {
+    await this.ensureAuthorByQuestion(userId, questionId);
+    const [row] = await db
+      .insert(testAnswersTable)
+      .values({
+        questionId,
+        text: dto.text,
+        isCorrect: dto.isCorrect ? 1 : 0,
+        order: dto.order ?? 0,
+      })
+      .returning();
+    if (!row) throw new NotFoundException('Не удалось создать ответ');
+    return row;
+  }
+
+  async updateTestAnswer(userId: number, id: number, dto: UpdateTestAnswerDto) {
+    const [answer] = await db.select().from(testAnswersTable).where(eq(testAnswersTable.id, id)).limit(1);
+    if (!answer) throw new NotFoundException('Ответ не найден');
+    await this.ensureAuthorByQuestion(userId, answer.questionId);
+    const updates: { text?: string; isCorrect?: number; order?: number } = {};
+    if (dto.text !== undefined) updates.text = dto.text;
+    if (dto.isCorrect !== undefined) updates.isCorrect = dto.isCorrect ? 1 : 0;
+    if (dto.order !== undefined) updates.order = dto.order;
+    if (Object.keys(updates).length === 0) {
+      const [a] = await db.select().from(testAnswersTable).where(eq(testAnswersTable.id, id)).limit(1);
+      return a!;
+    }
+    const [row] = await db
+      .update(testAnswersTable)
+      .set(updates)
+      .where(eq(testAnswersTable.id, id))
+      .returning();
+    return row!;
+  }
+
+  async deleteTestAnswer(userId: number, id: number) {
+    const [a] = await db.select().from(testAnswersTable).where(eq(testAnswersTable.id, id)).limit(1);
+    if (!a) throw new NotFoundException('Ответ не найден');
+    await this.ensureAuthorByQuestion(userId, a.questionId);
+    await db.delete(testAnswersTable).where(eq(testAnswersTable.id, id));
+    return { message: 'Ответ удалён' };
+  }
+
+  /** Отправить ответы теста; сохраняет балл и отмечает подмодуль пройденным */
+  async submitTest(
+    userId: number,
+    underModuleId: number,
+    answers: { questionId: number; answerId: number }[],
+  ) {
+    const courseId = await this.getCourseIdByUnderModuleId(underModuleId);
+    const [enrollment] = await db
+      .select()
+      .from(enrollmentsTable)
+      .where(
+        and(
+          eq(enrollmentsTable.userId, userId),
+          eq(enrollmentsTable.courseId, courseId),
+        ),
+      )
+      .limit(1);
+    if (!enrollment)
+      throw new ForbiddenException('Вы не записаны на этот курс');
+    const can = await this.canAccess(userId, underModuleId);
+    if (!can) throw new ForbiddenException('Нет доступа к этому шагу');
+    const questions = await db
+      .select()
+      .from(testQuestionsTable)
+      .where(eq(testQuestionsTable.underModuleId, underModuleId));
+    const questionIds = new Set(questions.map((q) => q.id));
+    const answerMap = new Map(answers.map((a) => [a.questionId, a.answerId]));
+    const correctAnswerIds = await db
+      .select({ id: testAnswersTable.id, questionId: testAnswersTable.questionId })
+      .from(testAnswersTable)
+      .where(
+        and(
+          inArray(testAnswersTable.questionId, [...questionIds]),
+          eq(testAnswersTable.isCorrect, 1),
+        ),
+      );
+    const correctByQuestion = new Map(correctAnswerIds.map((c) => [c.questionId, c.id]));
+    let score = 0;
+    for (const q of questions) {
+      const userAnswerId = answerMap.get(q.id);
+      const correctId = correctByQuestion.get(q.id);
+      if (userAnswerId !== undefined && correctId !== undefined && userAnswerId === correctId) score++;
+    }
+    const maxScore = questions.length;
+    const percent = maxScore > 0 ? Math.round((100 * score) / maxScore) : 0;
+    const passed = percent >= this.PASS_PERCENT;
+    await db
+      .insert(underModuleCompletionsTable)
+      .values({ userId, underModuleId, score })
+      .onConflictDoUpdate({
+        target: [
+          underModuleCompletionsTable.userId,
+          underModuleCompletionsTable.underModuleId,
+        ],
+        set: { score },
+      });
+    const progressPercent = await this.recalcProgress(userId, courseId);
+    return {
+      score,
+      maxScore,
+      percent,
+      passed,
+      progressPercent,
+      message: passed ? 'Тест засчитан' : 'Тест пройден',
+    };
   }
 
   // ——— Прохождение подмодуля + процент (студент) ———

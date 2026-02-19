@@ -29,6 +29,11 @@ import { UpdateUnderModuleDto } from './dto/update-under-module.dto';
 import { CreateModulesContentDto } from './dto/create-modules-content.dto';
 import { UpdateModulesContentDto } from './dto/update-modules-content.dto';
 import { SetScoreDto } from './dto/set-score.dto';
+import { CreateTestQuestionDto } from './dto/create-test-question.dto';
+import { UpdateTestQuestionDto } from './dto/update-test-question.dto';
+import { CreateTestAnswerDto } from './dto/create-test-answer.dto';
+import { UpdateTestAnswerDto } from './dto/update-test-answer.dto';
+import { SubmitTestDto } from './dto/submit-test.dto';
 
 const TEACHER_ROLES = ['teacher', 'admin'] as const;
 const VIDEO_UPLOAD_DIR = join(process.cwd(), 'uploads', 'videos');
@@ -257,5 +262,89 @@ export class ContentController {
       underModuleId,
       dto.score,
     );
+  }
+
+  // ——— Тест: вопросы и ответы ———
+  @Get('under-modules/:id/test-questions')
+  @UseGuards(JwtAuthGuard)
+  async getTestQuestions(
+    @Req() req: Request,
+    @Param('id', ParseIntPipe) underModuleId: number,
+  ) {
+    return this.content.getTestQuestionsForUser(req.user.id, underModuleId);
+  }
+
+  @Post('under-modules/:id/test-questions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...TEACHER_ROLES)
+  async createTestQuestion(
+    @Req() req: Request,
+    @Param('id', ParseIntPipe) underModuleId: number,
+    @Body() dto: CreateTestQuestionDto,
+  ) {
+    return this.content.createTestQuestion(req.user.id, underModuleId, dto);
+  }
+
+  @Put('test-questions/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...TEACHER_ROLES)
+  async updateTestQuestion(
+    @Req() req: Request,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateTestQuestionDto,
+  ) {
+    return this.content.updateTestQuestion(req.user.id, id, dto);
+  }
+
+  @Delete('test-questions/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...TEACHER_ROLES)
+  async deleteTestQuestion(
+    @Req() req: Request,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.content.deleteTestQuestion(req.user.id, id);
+  }
+
+  @Post('test-questions/:questionId/answers')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...TEACHER_ROLES)
+  async createTestAnswer(
+    @Req() req: Request,
+    @Param('questionId', ParseIntPipe) questionId: number,
+    @Body() dto: CreateTestAnswerDto,
+  ) {
+    return this.content.createTestAnswer(req.user.id, questionId, dto);
+  }
+
+  @Put('test-answers/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...TEACHER_ROLES)
+  async updateTestAnswer(
+    @Req() req: Request,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateTestAnswerDto,
+  ) {
+    return this.content.updateTestAnswer(req.user.id, id, dto);
+  }
+
+  @Delete('test-answers/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...TEACHER_ROLES)
+  async deleteTestAnswer(
+    @Req() req: Request,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.content.deleteTestAnswer(req.user.id, id);
+  }
+
+  @Post('under-modules/:id/submit-test')
+  @UseGuards(JwtAuthGuard)
+  async submitTest(
+    @Req() req: Request,
+    @Param('id', ParseIntPipe) underModuleId: number,
+    @Body() dto: SubmitTestDto,
+  ) {
+    return this.content.submitTest(req.user.id, underModuleId, dto.answers);
   }
 }

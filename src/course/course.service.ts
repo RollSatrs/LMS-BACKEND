@@ -5,6 +5,24 @@ import { coursesTable, lessonsTable, usersTable, categoryTable } from 'src/db/sc
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 
+const DEFAULT_COURSE_IMAGES: Record<string, string> = {
+  languages: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=800&q=80',
+  programming: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&q=80',
+  design: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=800&q=80',
+  business: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&q=80',
+  marketing: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80',
+  'web-dev': 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800&q=80',
+  'data-science': 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80',
+  'mobile-dev': 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=800&q=80',
+  school: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&q=80',
+};
+
+function getDefaultCourseImage(categorySlug: string | undefined, courseId: number): string {
+  if (categorySlug && DEFAULT_COURSE_IMAGES[categorySlug]) return DEFAULT_COURSE_IMAGES[categorySlug];
+  const fallbacks = Object.values(DEFAULT_COURSE_IMAGES);
+  return fallbacks[Math.abs(courseId) % fallbacks.length];
+}
+
 @Injectable()
 export class CourseService implements OnModuleInit {
   async onModuleInit() {
@@ -87,6 +105,7 @@ export class CourseService implements OnModuleInit {
         const duration = lessons.reduce((sum, l) => sum + (l.duration ?? 0), 0);
         return {
           ...course,
+          image: course.image || getDefaultCourseImage(category?.slug, course.id),
           author: author?.fullname ?? 'Автор',
           category: category?.name ?? '',
           categorySlug: category?.slug ?? '',
@@ -112,6 +131,7 @@ export class CourseService implements OnModuleInit {
     const duration = lessons.reduce((sum, l) => sum + Number(l.duration ?? 0), 0);
     return {
       ...course,
+      image: course.image || getDefaultCourseImage(category?.slug, course.id),
       author: author?.fullname ?? 'Автор',
       authorId: course.userId,
       category: category?.name ?? '',
@@ -142,6 +162,7 @@ export class CourseService implements OnModuleInit {
         const duration = lessons.reduce((sum, l) => sum + (l.duration ?? 0), 0);
         return {
           ...course,
+          image: course.image || getDefaultCourseImage(category?.slug, course.id),
           author: author?.fullname ?? 'Автор',
           category: category?.name ?? '',
           categorySlug: category?.slug ?? '',

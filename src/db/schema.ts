@@ -96,6 +96,23 @@ export const modulesContentTable = pgTable("modules_content", {
   order: integer().default(0),
 });
 
+/** Вопросы теста (подмодуль с type=test) */
+export const testQuestionsTable = pgTable("test_questions", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  underModuleId: integer("under_module_id").notNull().references(() => underModulesTable.id, { onDelete: "cascade" }),
+  text: varchar({ length: 2000 }).notNull(),
+  order: integer().default(0).notNull(),
+});
+
+/** Варианты ответов на вопрос (один правильный на вопрос — одиночный выбор) */
+export const testAnswersTable = pgTable("test_answers", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  questionId: integer("question_id").notNull().references(() => testQuestionsTable.id, { onDelete: "cascade" }),
+  text: varchar({ length: 1000 }).notNull(),
+  isCorrect: integer("is_correct").default(0).notNull(), // 1 = правильный
+  order: integer().default(0).notNull(),
+});
+
 /** Прохождение подмодуля пользователем + набранные баллы */
 export const underModuleCompletionsTable = pgTable(
   'under_module_completions',
@@ -157,10 +174,20 @@ export const modulesRelations = relations(modulesTable, ({ one, many }) => ({
 export const underModulesRelations = relations(underModulesTable, ({ one, many }) => ({
   module: one(modulesTable),
   content: many(modulesContentTable),
+  testQuestions: many(testQuestionsTable),
 }));
 
 export const modulesContentRelations = relations(modulesContentTable, ({ one }) => ({
   underModule: one(underModulesTable),
+}));
+
+export const testQuestionsRelations = relations(testQuestionsTable, ({ one, many }) => ({
+  underModule: one(underModulesTable),
+  answers: many(testAnswersTable),
+}));
+
+export const testAnswersRelations = relations(testAnswersTable, ({ one }) => ({
+  question: one(testQuestionsTable),
 }));
 
 export const underModuleCompletionsRelations = relations(underModuleCompletionsTable, ({ one }) => ({
