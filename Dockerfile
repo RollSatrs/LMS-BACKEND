@@ -15,9 +15,12 @@ WORKDIR /app
 
 COPY package.json pnpm-lock.yaml* ./
 RUN pnpm install --frozen-lockfile --prod
+RUN pnpm add drizzle-kit dotenv
 COPY --from=builder /app/dist/ ./dist/
+COPY --from=builder /app/drizzle ./drizzle
+COPY migrate.config.cjs ./
 
 EXPOSE 10000
 ENV PORT=10000
-# Показать содержимое dist и запустить (Nest может положить main.js в dist или dist/src)
-CMD ["sh", "-c", "ls -la /app/dist && ls -la /app/dist/src 2>/dev/null; node /app/dist/main.js 2>/dev/null || node /app/dist/src/main.js"]
+# Сначала миграции, потом старт приложения (echo чтобы в логах Render было видно)
+CMD ["sh", "-c", "echo '=== Running migrations ===' && npx drizzle-kit migrate --config=migrate.config.cjs && echo '=== Migrations OK, starting app ===' && node /app/dist/src/main.js"]
