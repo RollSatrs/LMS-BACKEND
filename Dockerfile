@@ -22,5 +22,5 @@ COPY migrate.config.cjs ./
 
 EXPOSE 10000
 ENV PORT=10000
-# Сначала миграции, потом старт приложения (echo чтобы в логах Render было видно)
-CMD ["sh", "-c", "echo '=== Running migrations ===' && npx drizzle-kit migrate --config=migrate.config.cjs && echo '=== Migrations OK, starting app ===' && node /app/dist/src/main.js"]
+# Push схемы в БД (создаёт таблицы), потом старт приложения
+CMD ["sh", "-c", "echo '=== Pushing schema to DB ===' && npx drizzle-kit push --config=migrate.config.cjs --force && echo '=== Schema OK, starting app ===' && node /app/dist/src/main.js"]
