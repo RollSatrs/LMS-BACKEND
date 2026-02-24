@@ -36,10 +36,11 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const { token, user, message } = await this.authService.register(params);
+    const isProd = process.env.NODE_ENV === 'production' || !!process.env.FRONT_URL;
     res.cookie('access_token', token, {
       httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     return { message, user };
@@ -52,10 +53,11 @@ export class AuthController {
     res: Response
   ){
     const {token, user, message} = await this.authService.login(params)
+    const isProd = process.env.NODE_ENV === 'production' || !!process.env.FRONT_URL;
     res.cookie("access_token", token,{
-      httpOnly: true,      // ❗ JS не может прочитать
-      secure: false,       // true если https
-      sameSite: 'lax',
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     })
     return{
@@ -106,7 +108,12 @@ export class AuthController {
 
   @Post("logout")
   logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie("access_token");
+    const isProd = process.env.NODE_ENV === 'production' || !!process.env.FRONT_URL;
+    res.clearCookie("access_token", {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
+    });
     return { message: "Вы успешно вышли" };
   }
 }
